@@ -1,0 +1,22 @@
+#include "mainwindow.h"
+#include "ui_mainwindow.h"
+#include <QRegExp>
+#include <QDebug>
+
+MainWindow::MainWindow(QWidget *parent) :
+    QMainWindow(parent),
+    ui(new Ui::MainWindow)
+{
+    ui->setupUi(this);
+}
+
+MainWindow::~MainWindow()
+{
+    delete ui;
+}
+
+void MainWindow::on_pushButton_clicked()
+{
+    QRegExp rx("/([a-z]+)/([a-z]+)");
+    qDebug()<<rx.pattern();
+}
