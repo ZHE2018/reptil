@@ -6,8 +6,8 @@
 AbstractReptile::AbstractReptile(QObject *parent) : QObject(parent)
 {
     manager= new QNetworkAccessManager(this);
-    connect(manager,SIGNAL(finished(QNetworkReply*)),this,SLOT(handleReply(QNetworkReply*));
-    this->load();
+    connect(manager,SIGNAL(finished(QNetworkReply*)),this,SLOT(handleReply(QNetworkReply*)));
+//    this->load();
 }
 
 AbstractReptile::~AbstractReptile()
@@ -21,17 +21,17 @@ void AbstractReptile::save()
     if(file.open(QFile::WriteOnly|QFile::Text))
     {
         QTextStream out(&file);
-        out<<this->currentUrl.toString()<<"\r\n";
-        out<<this->analysisData.pattern()<<"\r\n";
-        out<<this->analysisNextUrl.pattern()<<"\r\n";
+        out<<this->currentUrl.toString()<<"\n";
+        out<<this->analysisData.pattern()<<"\n";
+        out<<this->analysisNextUrl.pattern()<<"\n";
         for(auto i:this->allUrl.keys())
         {
-            out<<i<<"\r\n";
+            out<<i<<"\n";
         }
-        out<<"\r\n";
+        out<<"\n";
         for(auto i:this->data.keys())
         {
-            out<<i<<"\r\n";
+            out<<i<<"\n";
         }
     }
     else
@@ -59,11 +59,13 @@ void AbstractReptile::load()
         while(line!=QString(""))
         {
             allUrl.insert(line,1);
+            line=in.readLine();
         }
         line=in.readLine();
         while(!in.atEnd())
         {
             data.insert(line,1);
+            line=in.readLine();
         }
     }
     else
@@ -77,6 +79,8 @@ void AbstractReptile::handleReply(QNetworkReply *reply)
 {
     if(reply->error()!=QNetworkReply::NoError)//请求错误
     {
+        if(!this->data.isEmpty())
+            this->save();
         emit requestError(QString("reply error:")+reply->errorString());
         if(this->replyError())
         {
@@ -85,8 +89,11 @@ void AbstractReptile::handleReply(QNetworkReply *reply)
     }
     this->replyData=reply->readAll();
     reply->deleteLater();
-    QString text=QString::fromLocal8Bit(this->replyData);
+    QString text=QString::fromUtf8(this->replyData);
     //-----------------解析网页，获得数据--------------------
+
+    emit this->updateState(QString("update:request text from ")+this->currentUrl.url());
+
     int initCount=this->data.size();
     if(this->analysisData.isEmpty())
     {
@@ -99,11 +106,8 @@ void AbstractReptile::handleReply(QNetworkReply *reply)
         int count=0;
         while ((pos = reg.indexIn(text, pos)) != -1)
         {
-            QString line;
-            for(int i=0;i<reg.captureCount();i++)
-            {
-                line+=reg.cap(i);
-            }
+            QString line=reg.cap(0);
+
             if(!line.isEmpty())
             {
                 this->data.insert(line,0);
@@ -120,6 +124,10 @@ void AbstractReptile::handleReply(QNetworkReply *reply)
             return;
         }
     }
+
+    emit this->updateState(QString("update:get data ")+QString::number(data.size()-initCount));
+
+
     //-----------------解析网页，获得下一个网址---------------
     this->allUrl.insert(this->currentUrl.url(),-1);
     if(this->analysisNextUrl.isEmpty())
@@ -135,7 +143,7 @@ void AbstractReptile::handleReply(QNetworkReply *reply)
             QString line=reg.cap(0);
             if(!line.isEmpty())
             {
-                this->currentUrl=this->captureToUrl(line);
+                this->currentUrl=this->captureToUrl(line,this->currentUrl);
             }
             else
             {
@@ -154,19 +162,33 @@ void AbstractReptile::handleReply(QNetworkReply *reply)
         }
     }
 
+    emit this->updateState(QString("update:get next url ")+this->currentUrl.url());
+
     //-----------------验证终止-----------------------------
     if(finishWork(text))
     {
+        emit this->updateState(QString("update:finish at finishWork()"));
         emit workFinish(this->data.keys());
         return;
+        this->save();
     }
-    if(data.find(this->currentUrl.url())==data.end())
+    if(allUrl.find(this->currentUrl.url())!=allUrl.end())
     {
+        emit this->updateState(QString("update:finish : same url"));
         emit workFinish(this->data.keys());
+        return;
+        this->save();
+    }
+    if(this->currentUrl.isEmpty())
+    {
+        emit this->updateState(QString("update:finish empty url"));
+        this->save();
         return;
     }
     //----------------开始下一个网页-------------------------
-    work();
+    emit this->updateState(QString("update:request url ")+this->currentUrl.url());
+
+    this->manager->get(QNetworkRequest(this->currentUrl));
 }
 
 void AbstractReptile::work()

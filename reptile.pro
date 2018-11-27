@@ -15,10 +15,12 @@ TEMPLATE = app
 
 SOURCES += main.cpp\
         mainwindow.cpp \
-    abstract_reptile.cpp
+    abstract_reptile.cpp \
+    reptile.cpp
 
 HEADERS  += mainwindow.h \
-    abstract_reptile.h
+    abstract_reptile.h \
+    reptile.h
 
 FORMS    += mainwindow.ui
 

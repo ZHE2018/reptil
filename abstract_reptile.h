@@ -15,16 +15,16 @@ class AbstractReptile : public QObject
 public:
     explicit AbstractReptile(QObject *parent = 0);
     AbstractReptile(QObject *parent,QUrl &initUrl,QRegExp & analysisData,QRegExp & analysisNextUrl);
-    void setCurrentUrl(QUrl &url){this->currentUrl=url;}
-    void setanalysisDataRegExp(QRegExp & regExp){this->analysisData=regExp;}
-    void setanalysisNextUrlRegExp(QRegExp & regExp){this->analysisNextUrl=regExp;}
+    void setCurrentUrl(const QUrl &url){this->currentUrl=url;}
+    void setanalysisDataRegExp(const QRegExp & regExp){this->analysisData=regExp;}
+    void setanalysisNextUrlRegExp(const QRegExp & regExp){this->analysisNextUrl=regExp;}
     ~AbstractReptile();
     //===========
     virtual void save();//保存，继承是若添加数据，需要重写
     virtual void load();//读取保存，继承是若添加数据，需要重写
     //----------------
     virtual void getData(const QString & text,QMap<QString,int> &data){}
-    virtual void getNextUrl(const QString & text,QUrl & Url){}
+    virtual void getNextUrl(const QString & text,QUrl & currentUrl){}
     virtual bool finishWork(const QString & text){return false;}
 private:
     QUrl currentUrl;//当前网址
@@ -34,7 +34,7 @@ private:
     QRegExp analysisData;//数据解析规则
     QRegExp analysisNextUrl;//爬取规则
     QNetworkAccessManager * manager;//用于请求网页
-    virtual QUrl captureToUrl(const QString & line)=0;
+    virtual QUrl captureToUrl(const QString & line,const QUrl & currentUrl)=0;
 //==========================================
     //      发生错误时调用，返回true表示终止
     virtual bool replyError(){this->save(); return true;}
